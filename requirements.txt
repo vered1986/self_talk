@@ -1,0 +1,15 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: linux-64
+transformers
+jupyter
+tqdm
+torch
+tensorboardX
+sklearn
+overrides
+allennlp
+textacy
+pandas
+bs4
+git+https://github.com/vered1986/comet-commonsense#egg=comet-commonsense

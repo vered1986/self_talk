@@ -1,0 +1,21 @@
+{
+  "What will [NAME] want to do next?": "[NAME] wanted",
+  "What will [NAME] want to do after?": "[NAME] wanted",
+  "How would [NAME] feel afterwards?": "[NAME] felt",
+  "How would [NAME] feel as a result?": "[NAME] felt",
+  "How would [NAME] feel after?": "[NAME] felt",
+  "How would you describe [NAME]?": "[NAME] is a",
+  "What kind of person is [NAME]?": "[NAME] is a",
+  "How would you describe [NAME] as a person?": "[NAME] is a",
+  "Why did [NAME] do that?": "[NAME] did this because they wanted",
+  "Why did [NAME] do this?": "[NAME] did this because they wanted",
+  "Why did [NAME] want to do this?": "[NAME] did this because they wanted",
+  "What does [NAME] need to do beforehand?": "Before doing that, [NAME] first had to",
+  "What does [NAME] need to do before?": "Before doing that, [NAME] first had to",
+  "What does [NAME] need to do before this?": "Before doing that, [NAME] first had to",
+  "What did [NAME] need to do before this?": "Before doing that, [NAME] first had to",
+  "What will happen to [NAME]?": "[NAME]",
+  "What will happen to [NAME] next?": "[NAME]",
+  "What will [NAME] do next?": "[NAME]",
+  "What did [NAME] do?": "What [NAME] did was"
+}
