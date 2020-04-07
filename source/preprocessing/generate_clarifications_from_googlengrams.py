@@ -59,6 +59,13 @@ def main():
 
 
 def get_pairs(fields, dataset_type, nlp):
+    """
+    Get pairs of words from the context/question and choices.
+    :param fields: the dictionary of an instance loaded from a JSON file.
+    :param dataset_type: one of winogrande, commonsenseqa, socialiqa, piqa, copa, mctaco.
+    :param nlp: Spacy.
+    :return: list of word pairs.
+    """
     if dataset_type == 'winogrande':
         context = fields['sentence']
 
@@ -113,6 +120,9 @@ def get_pairs(fields, dataset_type, nlp):
 
 
 def get_content_words(text, nlp):
+    """
+    Return all the adjectives, nouns and verbs in the text.
+    """
     doc = nlp(text)
     content_words = [t.text for t in doc if t.pos_ in {"VERB", "NOUN", "ADJ"}]
     content_words = set(map(str.lower, content_words)).difference(STOPWORDS)
@@ -120,6 +130,9 @@ def get_content_words(text, nlp):
 
 
 def remove_non_ascii(text):
+    """
+    Remove non ascii characters
+    """
     return ''.join([i if ord(i) < 128 else ' ' for i in text])
 
 

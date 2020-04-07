@@ -193,7 +193,6 @@ class NodesOnPathFinder:
     """
     Applies bi-directional search to find the nodes in the shortest paths a pair of terms.
     """
-
     def __init__(self, resource):
         """
         Init the relevant nodes search

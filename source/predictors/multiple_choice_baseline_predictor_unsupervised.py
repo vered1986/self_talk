@@ -27,6 +27,9 @@ class InstanceReader(object):
 
 
 class CopaInstanceReader(InstanceReader):
+    """
+    Reads the COPA dataset into a unified format with context, question, label, and choices.
+    """
     @overrides
     def to_uniform_fields(self, fields):
         context = fields['premise']
@@ -46,6 +49,9 @@ class CopaInstanceReader(InstanceReader):
 
 
 class PiqaInstanceReader(InstanceReader):
+    """
+    Reads the PIQA dataset into a unified format with context, question, label, and choices.
+    """
     @overrides
     def to_uniform_fields(self, fields):
         context = ""
@@ -62,6 +68,9 @@ class PiqaInstanceReader(InstanceReader):
 
 
 class SocialIQAInstanceReader(InstanceReader):
+    """
+    Reads the SocialIQa dataset into a unified format with context, question, label, and choices.
+    """
     def __init__(self):
         super(SocialIQAInstanceReader).__init__()
         self.QUESTION_TO_ANSWER_PREFIX = {
@@ -122,6 +131,9 @@ class SocialIQAInstanceReader(InstanceReader):
 
 
 class WinograndeInstanceReader(InstanceReader):
+    """
+    Reads the WinoGrande dataset into a unified format with context, question, label, and choices.
+    """
     @overrides
     def to_uniform_fields(self, fields):
         context = fields['sentence']
@@ -142,6 +154,9 @@ class WinograndeInstanceReader(InstanceReader):
 
 
 class CommonsenseqaInstanceReader(InstanceReader):
+    """
+    Reads the CommonsenseQA dataset into a unified format with context, question, label, and choices.
+    """
     @overrides
     def to_uniform_fields(self, fields):
         context = ''
@@ -159,6 +174,9 @@ class CommonsenseqaInstanceReader(InstanceReader):
 
 
 class MCTACOInstanceReader(InstanceReader):
+    """
+    Reads the MCTaco dataset into a unified format with context, question, label, and choices.
+    """
     @overrides
     def to_uniform_fields(self, fields):
         context = fields['context']
@@ -172,10 +190,7 @@ class MCTACOInstanceReader(InstanceReader):
         context, question, label, choices = self.to_uniform_fields(fields)
         context_with_choices = [f"{context} {question} {choice[0].lower() + choice[1:]}" for choice in choices]
         return context, question, label, choices, context_with_choices
-    
-    
-    
-    
+
 
 INSTANCE_READERS = {"copa": CopaInstanceReader,
                     "socialiqa": SocialIQAInstanceReader,
@@ -195,9 +210,11 @@ def main():
     args = parser.parse_args()
     logger.info(args)
 
+    # Load the language model
     device = torch.device(f'cuda:{args.device}') if args.device >= 0 else torch.device("cpu")
     model, tokenizer = init_model(args.lm, device)
 
+    # Load the dataset
     instance_reader = INSTANCE_READERS[os.path.basename(os.path.dirname(args.dataset_file)).lower()]()
     set_name = os.path.basename(args.dataset_file).replace(".jsonl", "")
     out_file = os.path.join(args.out_dir, f"{args.lm}_{set_name}_predictions.jsonl")
@@ -206,6 +223,7 @@ def main():
 
     pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
+    # Predict instances
     with open(out_file, "w") as f_out:
         with open(args.dataset_file) as f_in:
             for line in tqdm.tqdm(f_in):
@@ -232,6 +250,9 @@ def main():
 
 
 def get_lm_score(model, batch):
+    """
+    Get the cross entropy loss of the texts in batch using the langage model
+    """
     # Batch: [num_choices, max_length]
     with torch.no_grad():
         num_choices, max_length = batch.shape

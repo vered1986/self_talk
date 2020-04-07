@@ -33,9 +33,11 @@ def main():
     args = parser.parse_args()
     logger.info(args)
 
+    # Load the language model
     device = torch.device(f'cuda:{args.device}') if args.device >= 0 else torch.device("cpu")
     model, tokenizer = init_model(args.lm, device)
 
+    # Load the dataset
     instance_reader = INSTANCE_READERS[os.path.basename(os.path.dirname(args.dataset_file)).lower()]()
     set_name = os.path.basename(args.dataset_file).replace(".jsonl", "")
     out_file = os.path.join(args.out_dir, f"{args.lm}_{set_name}_predictions.jsonl")
@@ -44,6 +46,7 @@ def main():
 
     pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
 
+    # Predict instances
     with open(out_file, "w") as f_out:
         with open(args.dataset_file) as f_in:
             for line in tqdm.tqdm(f_in):

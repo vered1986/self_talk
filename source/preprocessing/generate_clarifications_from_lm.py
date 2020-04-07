@@ -21,7 +21,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default=None, type=str, required=True, help="Jsonl file")
     parser.add_argument("--dataset_type", default="winogrande", type=str, required=False,
-                        help="base dataset format (winogrande, socialiqa, commonsenseqa, or copa)")
+                        help="base dataset format (winogrande, socialiqa, commonsenseqa, mctaco or copa)")
     parser.add_argument("--prefixes_file", default=None, type=str, required=True,
                         help="Path to a json file with the dictionary of question and answer prefixes.")
     parser.add_argument("--out_file", default=None, type=str, required=True, help="Output jsonl file")
@@ -49,6 +49,7 @@ def main():
     device = torch.device(f'cuda:{args.device}') if args.device >= 0 else torch.device("cpu")
     generator = LMTextGenerator(args.lm, device=device)
 
+    # BERT is used to replace the placeholder in WinoGrande with a pronoun.
     bert_tokenizer = BertTokenizer.from_pretrained(args.bert_model)
     bert_model = BertForMaskedLM.from_pretrained(args.bert_model).to(device)
 
@@ -63,6 +64,7 @@ def main():
             for line in tqdm.tqdm(f_in, total=num_lines):
                 fields = json.loads(line.strip())
 
+                # Get the context and the choices
                 if args.dataset_type == 'winogrande':
                     context = fields['sentence']
                     choices = [fields['option1'], fields['option2']]
@@ -109,7 +111,7 @@ def generate_clarifications(generator: LMTextGenerator,
                             choices: List[str],
                             max_clarification_question_length: int,
                             max_answer_length: int,
-                            orig_question: str,
+                            context: str,
                             prefixes: Dict[str, str],
                             dataset_type: str,
                             question: str = "",
@@ -122,49 +124,45 @@ def generate_clarifications(generator: LMTextGenerator,
     """
     Generate multiple clarification questions and answers them.
 
-    instance: str, required
-        The original instance.
-
-    orig_question: str, required
-        The part of the original instance to ask clarification questions about.
-
-    prefixes: Dict[str, str], required
-        Dictionary of question prefixes to answer prefixes.
-
-    label: ``torch.LongTensor``
-        The gold label.
-
-    qa_redundancy: int, optional (default = 1)
-        How many clarification questions and answers the model generates for each prefix.
-
-    choices: List[Dict[str, str]], optional (default = None)
-        The choices for multiple choice question answers.
+    generator: the language model.
+    choices: the choices for multiple choice question answers.
+    max_clarification_question_length: the maximum number of tokens in a clarification question.
+    max_answer_length: he maximum number of tokens in an answer.
+    context: the context.
+    prefixes: a dictionary of question prefixes to answer prefixes.
+    dataset_type: one of winogrande, commonsenseqa, copa, piqa, mctaco, socialiqa
+    question: the question (from the instance)
+    p_sampling_questions: p for Nucleus sampling for the question.
+    k_sampling_questions: k for top k sampling for the question.
+    p_sampling_answers: p for Nucleus sampling for the answer.
+    k_sampling_answers: k for top k sampling for the answer.
+    question_redundancy: how many questions to generate.
+    answer_redundancy: how many answers to generate.
 
     Returns:
-        A list of (prefix, question, answer)
+        A list of (question, answer)
     """
     question_prefixes = [k for k in prefixes.keys() if not k.endswith("?")]
 
     # Generate the clarification questions
-    clarification_questions = generator.generate([
-        ". ".join((orig_question, question_prefix))
+    clarification_questions = generator.generate([". ".join((context, question_prefix))
         for question_prefix in question_prefixes],
         length=max_clarification_question_length, stop_token='?',
         p=p_sampling_questions, k=k_sampling_questions, num_samples=question_redundancy)
 
-    # Only keep clarification questions that end with a question mark and are longer than one word
+    # Filter out short clarifications
     words = lambda s: set(s.translate(str.maketrans('', '', string.punctuation)).split())
 
     clarification_questions = [(' '.join((question_prefixes[i], clar_q)),
                                 get_answer_prefix(prefixes, question_prefixes[i], clar_q.strip()))
                                for i, clar_qs in clarification_questions.items()
                                for clar_q in clar_qs
-                               if len(words(clar_q).intersection(words(orig_question))) >= 1]
+                               if len(words(clar_q).intersection(words(context))) >= 1]
 
     clarification_questions = list(set(clarification_questions))
     curr_prefixes = {}
 
-    # Don't ask that about names!
+    # Ask about the choices, but not about names.
     for ch in choices:
         if (dataset_type == "winogrande" and ch[0] != ch[0].upper()) or dataset_type == "commonsenseqa":
             curr_prefixes[f'What is the definition of "{ch}"?'] = f'"{ch}" is defined as'
@@ -180,9 +178,10 @@ def generate_clarifications(generator: LMTextGenerator,
     if dataset_type == 'mctaco':
         curr_prefixes = {qp: ap for qp, ap in prefixes.items()}
         curr_prefixes[question] = ""
-                          
+
+    # If the instance already includes a question, we might use it.
     if dataset_type == "socialiqa":
-        names = {w for w in words(orig_question) if w[0] == w[0].upper()}.intersection(
+        names = {w for w in words(context) if w[0] == w[0].upper()}.intersection(
             {w for w in words(question) if w[0] == w[0].upper()})
 
         if len(names) > 0:
@@ -199,27 +198,27 @@ def generate_clarifications(generator: LMTextGenerator,
 
     # Generate the answers
     clar_questions_and_answers = generate_answers(
-        orig_question, clarification_questions, generator, max_answer_length,
+        context, clarification_questions, generator, max_answer_length,
         answer_redundancy=answer_redundancy, p_sampling_answers=p_sampling_answers,
         k_sampling_answers=k_sampling_answers)
 
     return clar_questions_and_answers
 
 
-def get_best_pronoun(bert_model, bert_tokenizer, device, orig_question):
+def get_best_pronoun(bert_model, bert_tokenizer, device, context):
     """
     Replaces the placeholder with the most likely pronoun
     """
     subs = ["he", "she", "it", "they", "her", "him", "them", "thing", "one", "someone", "ones", "things"]
     subs = sorted(
-        zip(subs, get_substitute_probabilities(bert_model, bert_tokenizer, orig_question, subs, device)),
+        zip(subs, get_substitute_probabilities(bert_model, bert_tokenizer, context, subs, device)),
         key=lambda item: item[-1], reverse=True)
     substitute = subs[0][0]
     return substitute
 
 
 def generate_answers(
-        orig_question: str,
+        context: str,
         clarification_questions: List,
         generator: LMTextGenerator,
         max_answer_length: int,
@@ -229,17 +228,19 @@ def generate_answers(
     """
     Generate answers for the clarification questions.
 
-    prefixes: Dict[str, str], required
-        Dictionary of question prefixes to answer prefixes.
-
-    answer_redundancy: int, optional (default = 1)
-        How many answers to generate for each prefix.
+    context: the context.
+    clarification_questions: list of generated clarification questions.
+    generator: the language model.
+    max_answer_length: he maximum number of tokens in an answer.
+    answer_redundancy: how many answers to generate.
+    p_sampling_answers: p for Nucleus sampling for the answer.
+    k_sampling_answers: k for top k sampling for the answer.
 
     Returns:
-        A list of (prefix, question, answer)
+        A list of (question, answer)
     """
     words = lambda s: set(s.translate(str.maketrans('', '', string.punctuation)).split())
-    generation_prefixes = [" ".join((orig_question, answer_prefix)) for _, answer_prefix in clarification_questions]
+    generation_prefixes = [" ".join((context, answer_prefix)) for _, answer_prefix in clarification_questions]
     answers = generator.generate(generation_prefixes, length=max_answer_length,
                                  stop_token='.', p=p_sampling_answers, k=k_sampling_answers,
                                  num_samples=max(1, answer_redundancy))
@@ -249,7 +250,7 @@ def generate_answers(
 
     _, answers = zip(*sorted(answers.items(), key=lambda x: x[0]))
 
-    # Only keep answers that end with a period
+    # Filter out short answers.
     capitalize = lambda s: s[0].upper() + s[1:]
 
     clar_questions_and_answers = [(clar_q, ' '.join([s for s in [capitalize(ans_prefix) if len(ans_prefix) > 0 else '',
@@ -264,16 +265,10 @@ def generate_answers(
     return clar_questions_and_answers
 
 
-def get_answer_prefix(prefixes = None,
+def get_answer_prefix(prefixes=None,
                       question_prefix: str = None,
                       question: str = None):
     """
-    question_prefix, str, required
-        The prefix of the clarification question
-
-    question, str, required
-        The rest of the clarification question after the prefix
-
     Returns the answer prefix for each question
     """
     question_prefix = question_prefix.replace("Question:", "").strip()
@@ -283,6 +278,9 @@ def get_answer_prefix(prefixes = None,
 
 
 def get_substitute_probabilities(bert_model, bert_tokenizer, text, choices, device):
+    """
+    Find the best pronoun to replace the placeholder, using BERT.
+    """
     choices_indices = [bert_tokenizer.convert_tokens_to_ids(
         bert_tokenizer.tokenize(choice))[0] for choice in choices]
     text = " ".join(("[CLS]", text.replace("_", "[MASK]"), "[SEP]"))

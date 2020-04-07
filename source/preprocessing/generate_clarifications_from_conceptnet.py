@@ -47,6 +47,7 @@ def main():
             for line in tqdm.tqdm(f_in, total=num_lines):
                 fields = json.loads(line.strip())
 
+                # Get pairs of concepts to query ConceptNet for their relationship
                 if args.dataset_type == 'winogrande':
                     context = fields['sentence']
                     choices = [fields['option1'], fields['option2']]
@@ -107,6 +108,9 @@ def main():
 
 
 def get_content_words(text, nlp):
+    """
+    Return all the adjectives, nouns and verbs in the text.
+    """
     doc = nlp(text)
     content_words = [t.text for t in doc if t.pos_ in {"VERB", "NOUN", "ADJ"}]
     return list(set(map(str.lower, content_words)))
@@ -114,10 +118,12 @@ def get_content_words(text, nlp):
 
 def generate_clarifications(word_pairs, conceptnet, answer_redundancy=3, max_length=3):
     """
-    Query the web for this text.
-    :param word_pairs: list of pairs of words to search for
-    :param max_len: maximum number of tokens to predict
-    :return: a predicted string
+    Find ConceptNet paths between each word pair.
+
+    word_pairs: list of word pairs.
+    conceptnet: an initialized `Resource` object.
+    answer_redundancy: how many paths to keep.
+    max_length: how many edges in a path.
     """
     results = {f'What is the relationship between "{w1}" and "{w2}"?':
                    shortest_paths(

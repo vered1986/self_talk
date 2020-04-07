@@ -48,6 +48,7 @@ def main():
 
     logger.info(f"Loading COMET model")
 
+    # Load COMET either from args.model_file or from its default location.
     if args.model_file is not None:
         comet_model = PretrainedCometModel(model_name_or_path=args.model_file, device=args.device)
     else:
