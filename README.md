@@ -4,7 +4,7 @@ This repository contains the code used in the paper:
 
 **Unsupervised Commonsense Question Answering with Self-Talk** 
 
-*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. arXiv 2020. 
+*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. arXiv 2020. [link](https://arxiv.org/abs/2004.05483)
 
 
 This is a generic framework for incorporating relevant background knowledge into unsupervised models for multiple choice common sense reasoning tasks. The knowledge comes either from:
