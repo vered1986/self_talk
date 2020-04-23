@@ -193,12 +193,18 @@ class NodesOnPathFinder:
     """
     Applies bi-directional search to find the nodes in the shortest paths a pair of terms.
     """
-    def __init__(self, resource):
+
+    def __init__(self, resource, include_reverse=True):
         """
         Init the relevant nodes search
         """
         self.adjacency_matrix = resource.cooc_mat
         self.transposed_adjacency_matrix = resource.cooc_mat.T
+
+        # Include reversed relations
+        if include_reverse:
+            self.adjacency_matrix += self.transposed_adjacency_matrix
+            self.transposed_adjacency_matrix = self.adjacency_matrix
 
     def find_nodes_on_path(self, x, y, max_length=5):
         """
@@ -334,7 +340,7 @@ def shortest_paths(resource, c1, c2, max_length=10, exclude_relations=None):
     Return the shortest paths from c1 to c2, up to max_length edges,
     optionally excluding some relations.
     """
-    nodes_finder = NodesOnPathFinder(resource)
+    nodes_finder = NodesOnPathFinder(resource, include_reverse=True)
     c1_index = resource.concept2index.get(c1, None)
     c2_index = resource.concept2index.get(c2, None)
 
