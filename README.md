@@ -1,10 +1,10 @@
-## Unsupervised Common Sense Question Answering with Self-Talk
+## Unsupervised Commonsense Question Answering with Self-Talk
 
 This repository contains the code used in the paper:
 
-**Unsupervised Common Sense Question Answering with Self-Talk** 
+**Unsupervised Commonsense Question Answering with Self-Talk** 
 
-*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. arXiv 2020. 
+*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. arXiv 2020. [link](https://arxiv.org/abs/2004.05483)
 
 
 This is a generic framework for incorporating relevant background knowledge into unsupervised models for multiple choice common sense reasoning tasks. The knowledge comes either from:
@@ -150,7 +150,7 @@ Please cite this repository using the following reference:
 
 ```
 @inproceedings{self_talk_2020,
-  title={Unsupervised Common Sense Question Answering with Self-Talk},
+  title={Unsupervised Commonsense Question Answering with Self-Talk},
   author={Vered Shwartz and Peter West and Ronan Le Bras and Chandra Bhagavatula and and Yejin Choi},
   booktitle={arXiv},
   year={2020}
