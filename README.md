@@ -15,7 +15,7 @@ This is a generic framework for incorporating relevant background knowledge into
 
 ### Tasks
  
-The `data` directory contains the `train.jsonl`, `dev.jsonl`, and `test.jsonl` of the following tasks:
+The `data` directory contains the `dev.jsonl` and `test.jsonl` of the following tasks:
 
 #### COPA
 
