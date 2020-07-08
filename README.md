@@ -81,7 +81,11 @@ optional arguments:
 
 In the first run, it will download and process the ConceptNet data, and save it in `CONCEPTNET_DIR`.
 
-2. COMET: run the following script for each dataset:
+2. COMET: 
+
+Make sure you've installed the Comet reimplementation from [here](https://github.com/vered1986/comet-commonsense). 
+
+Run the following script for each dataset:
 
 ```
 usage: generate_clarifications_from_comet.py [-h] --dataset DATASET
