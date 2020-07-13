@@ -47,7 +47,7 @@ The `data` directory contains the `dev.jsonl` and `test.jsonl` of the following 
 Before you start, make sure you've installed all the requirements in `requirements.txt`. 
 
 `bash generate_all_lm_clarifications.sh [dataset]` will generate all the self-talk clarifications for a specific dataset. 
-It assumes an 8 GPU machine and utilizes the available GPUs.
+It assumes an 8 GPU machine and utilizes all the available GPUs (one GPU per process).
 
 For the external resources:
 
