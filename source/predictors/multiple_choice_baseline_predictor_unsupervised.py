@@ -10,7 +10,7 @@ import numpy as np
 from overrides import overrides
 from torch.nn import CrossEntropyLoss
 from sklearn.metrics import accuracy_score
-from transformers import AutoTokenizer, AutoModelWithLMHead
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -221,8 +221,6 @@ def main():
     gold = []
     predictions = []
 
-    pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
-
     # Predict instances
     with open(out_file, "w") as f_out:
         with open(args.dataset_file) as f_in:
@@ -234,11 +232,8 @@ def main():
                 gold.append(label)
 
                 # Tokenize and pad
-                tokenized = [tokenizer.encode(text) for text in context_with_choices]
-                max_length = max([len(text) for text in tokenized])
-                tokenized = [text + [pad_token_id] * (max_length - len(text)) for text in tokenized]
-                tokenized = torch.tensor(tokenized).long().to(device)
-                prediction = int(np.argmin(get_lm_score(model, tokenized)))
+                tokenized = tokenizer(context_with_choices, return_tensors="pt", padding=True)["input_ids"].to(device)
+                prediction = int(np.argmin(get_lm_score(model, tokenized, tokenizer.pad_token_id)))
                 fields["prediction"] = prediction
                 predictions.append(prediction)
                 f_out.write(json.dumps(fields) + "\n")
@@ -249,7 +244,7 @@ def main():
         print(f"Accuracy: {accuracy:.3f}")
 
 
-def get_lm_score(model, batch):
+def get_lm_score(model, batch, pad_token_id):
     """
     Get the cross entropy loss of the texts in batch using the langage model
     """
@@ -257,7 +252,8 @@ def get_lm_score(model, batch):
     with torch.no_grad():
         num_choices, max_length = batch.shape
         shift_labels = batch[..., 1:].contiguous().view(-1)
-        lm_logits = model(batch)[0]
+        shift_labels[shift_labels == pad_token_id] = -100
+        lm_logits = model(batch).logits
         shift_logits = lm_logits[..., :-1, :].contiguous()
         shift_logits = shift_logits.view(-1, shift_logits.size(-1))
         loss_fct = CrossEntropyLoss(reduction="none")
@@ -277,7 +273,14 @@ def init_model(model_name: str,
     """
     logger.info(f'Initializing {model_name}')
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelWithLMHead.from_pretrained(model_name)
+
+    if tokenizer.pad_token is None:
+        if tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+        else:
+            tokenizer.pad_token = tokenizer.eos_token = tokenizer.unk_token
+
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     model.to(device)
     model.eval()
     return model, tokenizer

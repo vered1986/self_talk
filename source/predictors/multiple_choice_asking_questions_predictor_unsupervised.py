@@ -11,14 +11,21 @@ import numpy as np
 from overrides import overrides
 from torch.nn import CrossEntropyLoss
 from sklearn.metrics import accuracy_score
-from transformers import AutoTokenizer, AutoModelWithLMHead
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 50
+BATCH_SIZE = {"distilgpt2": 64,
+              "openai-gpt": 64,
+              "gpt2": 64,
+              "gpt2-medium": 32,
+              "gpt2-large": 32,
+              "gpt2-xl": 16,
+              "xlnet-base-cased": 32,
+              "xlnet-large-cased": 16}
 
 
 class InstanceReader(object):
@@ -292,8 +299,6 @@ def main():
     gold = []
     predictions = []
 
-    pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else 0
-
     # Predict instances
     with open(out_file, "w") as f_out:
         with open(args.dataset_file) as f_in:
@@ -305,22 +310,20 @@ def main():
                 gold.append(label)
 
                 # Tokenize and pad
-                tokenized = [[tokenizer.encode(text) for text in per_clar]
+                tokenized = [tokenizer(per_clar, return_tensors="pt", padding=True)["input_ids"].to(device)
                              for per_clar in context_with_choice_and_clarifications]
-                max_length = [max([len(text) for text in per_clar]) for per_clar in tokenized]
-                tokenized = [[text + [pad_token_id] * (max_len - len(text)) for text in per_clar]
-                             for per_clar, max_len in zip(tokenized, max_length)]
 
                 # Compute in batches
+                batch_size = BATCH_SIZE[args.lm]
                 num_choices = len(tokenized)
-                num_batches = int(math.ceil(len(tokenized[0]) / BATCH_SIZE))
+                num_batches = int(math.ceil(len(tokenized[0]) / batch_size))
                 per_choice_score = [1000] * num_choices
 
                 for batch_index in range(0, num_batches):
-                    curr_batch = [tokenized[i][batch_index*BATCH_SIZE:(batch_index+1)*BATCH_SIZE]
+                    curr_batch = [tokenized[i][batch_index*batch_size:(batch_index+1)*batch_size]
                                   for i in range(num_choices)]
-                    curr_batch = [torch.tensor(per_clar).long().to(device) for per_clar in curr_batch]
-                    curr_scores = [get_lm_score(model, clars_choice) for clars_choice in curr_batch]
+                    curr_scores = [get_lm_score(model, clars_choice, tokenizer.pad_token_id)
+                                   for clars_choice in curr_batch]
                     per_choice_score = [min(per_choice_score[i], curr_scores[i]) for i in range(num_choices)]
 
                 prediction = int(np.argmin(per_choice_score))
@@ -334,7 +337,7 @@ def main():
             print(f"Accuracy: {accuracy:.3f}")
 
 
-def get_lm_score(model, batch):
+def get_lm_score(model, batch, pad_token_id):
     """
     Get the lowest cross entropy loss for each instance (list of clarifications) in the batch
     using the langage model
@@ -342,8 +345,9 @@ def get_lm_score(model, batch):
     # Batch: [num_clarifications, max_length]
     with torch.no_grad():
         num_clarifications, max_length = batch.shape
-        shift_labels = batch[..., 1:].contiguous().view(-1)
-        lm_logits = model(batch)[0]
+        shift_labels = batch[..., 1:].contiguous().view(-1).clone()
+        shift_labels[shift_labels == pad_token_id] = -100
+        lm_logits = model(batch).logits
         shift_logits = lm_logits[..., :-1, :].contiguous()
         shift_logits = shift_logits.view(-1, shift_logits.size(-1))
         loss_fct = CrossEntropyLoss(reduction="none")
@@ -363,7 +367,14 @@ def init_model(model_name: str,
     """
     logger.info(f'Initializing {model_name}')
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelWithLMHead.from_pretrained(model_name)
+
+    if tokenizer.pad_token is None:
+        if tokenizer.eos_token is not None:
+            tokenizer.pad_token = tokenizer.eos_token
+        else:
+            tokenizer.pad_token = tokenizer.eos_token = 0
+
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     model.to(device)
     model.eval()
     return model, tokenizer

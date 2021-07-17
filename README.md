@@ -129,6 +129,11 @@ optional arguments:
 
 Notice that the script assumes a Google Ngrams directory processed as in [here](https://github.com/vered1986/PythonUtils/tree/master/corpora/google_ngrams).
 
+If you want to download the pre-computed clarifications, you need to install [Git LFS](https://git-lfs.github.com/) and run:
+```bash
+git lfs install
+git lfs pull
+```
 
 ### Model
 
@@ -152,7 +157,7 @@ Please cite this repository using the following reference:
 @inproceedings{self_talk_2020,
   title={Unsupervised Commonsense Question Answering with Self-Talk},
   author={Vered Shwartz and Peter West and Ronan Le Bras and Chandra Bhagavatula and and Yejin Choi},
-  booktitle={arXiv},
+  booktitle={EMNLP},
   year={2020}
 }
 ```
