@@ -4,7 +4,7 @@ This repository contains the code used in the paper:
 
 **Unsupervised Commonsense Question Answering with Self-Talk** 
 
-*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. arXiv 2020. [link](https://arxiv.org/abs/2004.05483)
+*Vered Shwartz, Peter West, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi*. EMNLP 2020. [link](https://arxiv.org/abs/2004.05483)
 
 
 This is a generic framework for incorporating relevant background knowledge into unsupervised models for multiple choice common sense reasoning tasks. The knowledge comes either from:
@@ -15,7 +15,7 @@ This is a generic framework for incorporating relevant background knowledge into
 
 ### Tasks
  
-The `data` directory contains the `train.jsonl`, `dev.jsonl`, and `test.jsonl` of the following tasks:
+The `data` directory contains the `dev.jsonl` and `test.jsonl` of the following tasks:
 
 #### COPA
 
@@ -47,7 +47,7 @@ The `data` directory contains the `train.jsonl`, `dev.jsonl`, and `test.jsonl` o
 Before you start, make sure you've installed all the requirements in `requirements.txt`. 
 
 `bash generate_all_lm_clarifications.sh [dataset]` will generate all the self-talk clarifications for a specific dataset. 
-It assumes an 8 GPU machine and utilizes the available GPUs.
+It assumes an 8 GPU machine and utilizes all the available GPUs (one GPU per process).
 
 For the external resources:
 
@@ -81,7 +81,11 @@ optional arguments:
 
 In the first run, it will download and process the ConceptNet data, and save it in `CONCEPTNET_DIR`.
 
-2. COMET: run the following script for each dataset:
+2. COMET: 
+
+Make sure you've installed the Comet reimplementation from [here](https://github.com/vered1986/comet-commonsense). 
+
+Run the following script for each dataset:
 
 ```
 usage: generate_clarifications_from_comet.py [-h] --dataset DATASET
